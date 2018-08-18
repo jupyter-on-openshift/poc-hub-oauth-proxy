@@ -1208,6 +1208,14 @@
                             {
                                 "name": "proxy",
                                 "image": "bitnami/oauth2-proxy:latest",
+                                "command": [
+                                    "oauth2_proxy",
+                                    "--upstream=http://${JUPYTERHUB_NAME}:8080/",
+                                    "--http-address=0.0.0.0:8080",
+                                    "--email-domain=*",
+                                    "-provider=oidc",
+                                    "-oidc-issuer-url=http://${KEYCLOAK_NAME}:8080/"
+                                ],
                                 "env": [
                                     {
                                         "name": "OAUTH2_PROXY_COOKIE_SECRET",
