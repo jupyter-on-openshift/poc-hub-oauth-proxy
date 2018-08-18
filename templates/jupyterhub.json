@@ -1201,6 +1201,7 @@
                         "containers": [
                             {
                                 "name": "proxy",
+                                "image": "bitnami/oauth2-proxy:latest",
                                 "env": [
                                 ],
                                 "ports": [
@@ -1214,19 +1215,6 @@
                     }
                 },
                 "triggers": [
-                    {
-                        "imageChangeParams": {
-                            "automatic": true,
-                            "containerNames": [
-                                "proxy"
-                            ],
-                            "from": {
-                                "kind": "DockerImage",
-                                "name": "bitnami/oauth2-proxy:latest"
-                            }
-                        },
-                        "type": "ImageChange"
-                    },
                     {
                         "type": "ConfigChange"
                     }
