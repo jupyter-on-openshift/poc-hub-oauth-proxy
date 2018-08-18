@@ -109,6 +109,12 @@
             "generate": "expression",
             "from": "[a-f0-9]{32}",
             "required": true
+        },
+        {
+            "name": "OAUTH_COOKIE_SECRET",
+            "generate": "expression",
+            "from": "[a-f0-9]{32}",
+            "required": true
         }
     ],
     "objects": [
@@ -1203,6 +1209,18 @@
                                 "name": "proxy",
                                 "image": "bitnami/oauth2-proxy:latest",
                                 "env": [
+                                    {
+                                        "name": "OAUTH2_PROXY_COOKIE_SECRET",
+                                        "value": "${OAUTH_COOKIE_SECRET}"
+                                    },
+                                    {
+                                        "name": "OAUTH2_PROXY_CLIENT_ID",
+                                        "value": "jupyterhub"
+                                    },
+                                    {
+                                        "name": "OAUTH2_PROXY_CLIENT_SECRET",
+                                        "value": "${${OAUTH_CLIENT_SECRET}}"
+                                    }
                                 ],
                                 "ports": [
                                     {
