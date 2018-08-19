@@ -12,5 +12,7 @@ exec oauth2_proxy \
   -skip-provider-button \
   -redirect-url=$REDIRECT_URL \
   -oidc-issuer-url=$OIDC_ISSUER_URL \
+  -pass-access-token=true \
+  -pass-user-headers=true \
   -ssl-insecure-skip-verify \
   -cookie-secure=false
