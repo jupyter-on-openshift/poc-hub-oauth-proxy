@@ -21,6 +21,11 @@
             "required": true
         },
         {
+            "name": "PROXY_NAME",
+            "value": "oauth2_proxy",
+            "required": true
+        },
+        {
             "name": "NOTEBOOK_REPOSITORY_URL",
             "value": "https://github.com/jakevdp/PythonDataScienceHandbook",
             "required": true
@@ -82,8 +87,7 @@
         },
         {
             "name": "KEYCLOAK_USER",
-            "generate": "expression",
-            "from": "[a-zA-Z0-9]{8}",
+            "value": "admin",
             "required": true
         },
         {
@@ -1179,10 +1183,83 @@
             }
         },
         {
+            "kind": "ImageStream",
+            "apiVersion": "v1",
+            "metadata": {
+                "name": "${PROXY_NAME}-s2i",
+                "labels": {
+                    "app": "${JUPYTERHUB_NAME}"
+                }
+            },
+            "spec": {
+                "tags": [
+                    {
+                        "name": "latest",
+                        "from": {
+                            "kind": "DockerImage",
+                            "image": "bitnami/oauth2-proxy:latest"
+                        }
+                    }
+                ]
+            }
+        },
+        {
+            "kind": "ImageStream",
+            "apiVersion": "v1",
+            "metadata": {
+                "name": "${PROXY_NAME}-img",
+                "labels": {
+                    "app": "${JUPYTERHUB_NAME}"
+                }
+            }
+        },
+        {
+            "kind": "BuildConfig",
+            "apiVersion": "v1",
+            "metadata": {
+                "name": "${PROXY_NAME}-img",
+                "labels": {
+                    "app": "${JUPYTERHUB_NAME}"
+                }
+            },
+            "spec": {
+                "triggers": [
+                    {
+                        "type": "ConfigChange"
+                    },
+                    {
+                        "type": "ImageChange"
+                    }
+                ],
+                "source": {
+                    "type": "Git",
+                    "git": {
+                        "uri": "https://github.com/jupyter-on-openshift/poc-hub-oauth-proxy.git"
+                    },
+                    "contextDir": "auth_proxy"
+                },
+                "strategy": {
+                    "type": "Source",
+                    "sourceStrategy": {
+                        "from": {
+                            "kind": "ImageStreamTag",
+                            "name": "${PROXY_NAME}-s2i:latest"
+                        }
+                    }
+                },
+                "output": {
+                    "to": {
+                        "kind": "ImageStreamTag",
+                        "name": "${PROXY_NAME}-img:latest"
+                    }
+                }
+            }
+        },
+        {
             "apiVersion": "v1",
             "kind": "DeploymentConfig",
             "metadata": {
-                "name": "${JUPYTERHUB_NAME}-proxy",
+                "name": "${PROXY_NAME}",
                 "labels": {
                     "app": "${JUPYTERHUB_NAME}"
                 }
@@ -1191,7 +1268,7 @@
                 "replicas": 1,
                 "selector": {
                     "app": "${JUPYTERHUB_NAME}",
-                    "deploymentconfig": "${JUPYTERHUB_NAME}-proxy"
+                    "deploymentconfig": "${PROXY_NAME}"
                 },
                 "strategy": {
                     "type": "Recreate"
@@ -1200,23 +1277,22 @@
                     "metadata": {
                         "labels": {
                             "app": "${JUPYTERHUB_NAME}",
-                            "deploymentconfig": "${JUPYTERHUB_NAME}-proxy"
+                            "deploymentconfig": "${PROXY_NAME}"
                         }
                     },
                     "spec": {
                         "containers": [
                             {
                                 "name": "proxy",
-                                "image": "bitnami/oauth2-proxy:latest",
-                                "command": [
-                                    "oauth2_proxy",
-                                    "--upstream=http://${JUPYTERHUB_NAME}:8080/",
-                                    "--http-address=0.0.0.0:8080",
-                                    "--email-domain=*",
-                                    "-provider=oidc",
-                                    "-oidc-issuer-url=http://${KEYCLOAK_NAME}:8080/"
-                                ],
                                 "env": [
+                                    {
+                                        "name": "JUPYTERHUB_SERVICE_NAME",
+                                        "value": "${JUPYTERHUB_NAME}"
+                                    },
+                                    {
+                                        "name": "KEYCLOAK_SERVICE_NAME",
+                                        "value": "${KEYCLOAK_NAME}"
+                                    },
                                     {
                                         "name": "OAUTH2_PROXY_COOKIE_SECRET",
                                         "value": "${OAUTH_COOKIE_SECRET}"
@@ -1227,7 +1303,7 @@
                                     },
                                     {
                                         "name": "OAUTH2_PROXY_CLIENT_SECRET",
-                                        "value": "${${OAUTH_CLIENT_SECRET}}"
+                                        "value": "${OAUTH_CLIENT_SECRET}"
                                     }
                                 ],
                                 "ports": [
@@ -1242,6 +1318,19 @@
                 },
                 "triggers": [
                     {
+                        "imageChangeParams": {
+                            "automatic": true,
+                            "containerNames": [
+                                "proxy"
+                            ],
+                            "from": {
+                                "kind": "ImageStreamTag",
+                                "name": "${PROXY_NAME}-img:latest"
+                            }
+                        },
+                        "type": "ImageChange"
+                    },
+                    {
                         "type": "ConfigChange"
                     }
                 ]
@@ -1251,7 +1340,7 @@
             "kind": "Service",
             "apiVersion": "v1",
             "metadata": {
-                "name": "${JUPYTERHUB_NAME}-proxy",
+                "name": "${PROXY_NAME}",
                 "labels": {
                     "app": "${JUPYTERHUB_NAME}"
                 }
@@ -1267,7 +1356,7 @@
                 ],
                 "selector": {
                     "app": "${JUPYTERHUB_NAME}",
-                    "deploymentconfig": "${JUPYTERHUB_NAME}-proxy"
+                    "deploymentconfig": "${PROXY_NAME}"
                 }
             }
         },
@@ -1287,7 +1376,7 @@
                 "host": "",
                 "to": {
                     "kind": "Service",
-                    "name": "${JUPYTERHUB_NAME}-proxy",
+                    "name": "${PROXY_NAME}",
                     "weight": 100
                 },
                 "port": {
