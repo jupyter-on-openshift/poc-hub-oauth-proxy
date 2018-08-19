@@ -226,9 +226,13 @@
                 "labels": {
                     "app": "${JUPYTERHUB_NAME}"
                 }
-            }
+            },
+	    "spec": {
+		"lookupPolicy": {
+		    "local": true
+		}
+	    }
         },
-
         {
             "kind": "BuildConfig",
             "apiVersion": "v1",
@@ -1207,6 +1211,7 @@
                         }
                     },
                     "spec": {
+                        "serviceAccountName": "${JUPYTERHUB_NAME}-hub",
                         "initContainers": [
                             {
                                 "name": "setup-scripts",
@@ -1214,11 +1219,20 @@
                                 "command": [
                                     "/opt/app-root/src/setup-oauth2-proxy.sh"
                                 ],
+                                "env": [
+                                    {
+                                        "name": "JUPYTERHUB_SERVICE_NAME",
+                                        "value": "${JUPYTERHUB_NAME}"
+                                    },
+                                    {
+                                        "name": "KEYCLOAK_SERVICE_NAME",
+                                        "value": "${KEYCLOAK_NAME}"
+                                    }
+                                ],
                                 "volumeMounts": [
                                     {
                                         "name": "scripts",
-                                        "mountPath": "/opt/oauth2-proxy",
-                                        "subPath": "oauth2-proxy"
+                                        "mountPath": "/opt/oauth2-proxy"
                                     }
                                 ]
                             }
@@ -1230,14 +1244,6 @@
                                     "/opt/oauth2-proxy/start-oauth2-proxy.sh"
                                 ],
                                 "env": [
-                                    {
-                                        "name": "JUPYTERHUB_SERVICE_NAME",
-                                        "value": "${JUPYTERHUB_NAME}"
-                                    },
-                                    {
-                                        "name": "KEYCLOAK_SERVICE_NAME",
-                                        "value": "${KEYCLOAK_NAME}"
-                                    },
                                     {
                                         "name": "OAUTH2_PROXY_COOKIE_SECRET",
                                         "value": "${OAUTH_COOKIE_SECRET}"
