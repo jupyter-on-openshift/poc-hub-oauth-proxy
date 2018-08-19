@@ -22,7 +22,7 @@
         },
         {
             "name": "PROXY_NAME",
-            "value": "oauth2_proxy",
+            "value": "oauth2-proxy",
             "required": true
         },
         {
@@ -1197,7 +1197,7 @@
                         "name": "latest",
                         "from": {
                             "kind": "DockerImage",
-                            "image": "bitnami/oauth2-proxy:latest"
+                            "name": "bitnami/oauth2-proxy:latest"
                         }
                     }
                 ]
