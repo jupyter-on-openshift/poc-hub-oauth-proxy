@@ -333,7 +333,7 @@
                         "initContainers": [
                             {
                                 "name": "wait-for-database",
-                                "image": "${JUPYTERHUB_IMAGE}",
+                                "image": "${JUPYTERHUB_NAME}-hub-img:latest",
                                 "command": [ "wait-for-database" ],
                                 "env": [
                                     {
@@ -355,7 +355,7 @@
                         "containers": [
                             {
                                 "name": "jupyterhub",
-                                "image": "${JUPYTERHUB_IMAGE}",
+                                "image": "${JUPYTERHUB_NAME}-hub-img:latest",
                                 "ports": [
                                     {
                                         "containerPort": 8080,
@@ -781,7 +781,7 @@
             "kind": "ImageStream",
             "apiVersion": "v1",
             "metadata": {
-                "name": "${KEYCLOAK_NAME}-s2i",
+                "name": "${KEYCLOAK_NAME}-img",
                 "labels": {
                     "app": "${JUPYTERHUB_NAME}"
                 }
@@ -796,58 +796,6 @@
                         }
                     }
                 ]
-            }
-        },
-        {
-            "kind": "ImageStream",
-            "apiVersion": "v1",
-            "metadata": {
-                "name": "${KEYCLOAK_NAME}-img",
-                "labels": {
-                    "app": "${JUPYTERHUB_NAME}"
-                }
-            }
-        },
-        {
-            "kind": "BuildConfig",
-            "apiVersion": "v1",
-            "metadata": {
-                "name": "${KEYCLOAK_NAME}-img",
-                "labels": {
-                    "app": "${JUPYTERHUB_NAME}"
-                }
-            },
-            "spec": {
-                "triggers": [
-                    {
-                        "type": "ConfigChange"
-                    },
-                    {
-                        "type": "ImageChange"
-                    }
-                ],
-                "source": {
-                    "type": "Git",
-                    "git": {
-                        "uri": "https://github.com/jupyter-on-openshift/poc-hub-oauth-proxy.git"
-                    },
-                    "contextDir": "keycloak"
-                },
-                "strategy": {
-                    "type": "Source",
-                    "sourceStrategy": {
-                        "from": {
-                            "kind": "ImageStreamTag",
-                            "name": "${KEYCLOAK_NAME}-s2i:latest"
-                        }
-                    }
-                },
-                "output": {
-                    "to": {
-                        "kind": "ImageStreamTag",
-                        "name": "${KEYCLOAK_NAME}-img:latest"
-                    }
-                }
             }
         },
         {
@@ -896,9 +844,27 @@
                     },
                     "spec": {
                         "serviceAccountName": "${JUPYTERHUB_NAME}-hub",
+                        "initContainers": [
+                            {
+                                "name": "setup-scripts",
+                                "image": "${JUPYTERHUB_NAME}-hub-img:latest",
+                                "command": [
+                                    "/opt/app-root/src/setup-keycloak.sh"
+                                ],
+                                "volumeMounts": [
+                                    {
+                                        "name": "scripts",
+                                        "mountPath": "/opt/keycloak"
+                                    }
+                                ]
+                            }
+                        ],
                         "containers": [
                             {
                                 "name": "keycloak",
+                                "command": [
+                                    "/opt/keycloak/start-keycloak.sh"
+                                ],
                                 "ports": [
                                     {
                                         "containerPort": 8080,
@@ -959,7 +925,19 @@
                                         "name": "PROXY_ADDRESS_FORWARDING",
                                         "value": "true"
                                     }
+                                ],
+                                "volumeMounts": [
+                                    {
+                                        "name": "scripts",
+                                        "mountPath": "/opt/keycloak"
+                                    }
                                 ]
+                            }
+                        ],
+                        "volumes": [
+                            {
+                                "name": "scripts",
+                                "emptyDir": {}
                             }
                         ]
                     }
@@ -1186,7 +1164,7 @@
             "kind": "ImageStream",
             "apiVersion": "v1",
             "metadata": {
-                "name": "${PROXY_NAME}-s2i",
+                "name": "${PROXY_NAME}-img",
                 "labels": {
                     "app": "${JUPYTERHUB_NAME}"
                 }
@@ -1201,58 +1179,6 @@
                         }
                     }
                 ]
-            }
-        },
-        {
-            "kind": "ImageStream",
-            "apiVersion": "v1",
-            "metadata": {
-                "name": "${PROXY_NAME}-img",
-                "labels": {
-                    "app": "${JUPYTERHUB_NAME}"
-                }
-            }
-        },
-        {
-            "kind": "BuildConfig",
-            "apiVersion": "v1",
-            "metadata": {
-                "name": "${PROXY_NAME}-img",
-                "labels": {
-                    "app": "${JUPYTERHUB_NAME}"
-                }
-            },
-            "spec": {
-                "triggers": [
-                    {
-                        "type": "ConfigChange"
-                    },
-                    {
-                        "type": "ImageChange"
-                    }
-                ],
-                "source": {
-                    "type": "Git",
-                    "git": {
-                        "uri": "https://github.com/jupyter-on-openshift/poc-hub-oauth-proxy.git"
-                    },
-                    "contextDir": "auth_proxy"
-                },
-                "strategy": {
-                    "type": "Source",
-                    "sourceStrategy": {
-                        "from": {
-                            "kind": "ImageStreamTag",
-                            "name": "${PROXY_NAME}-s2i:latest"
-                        }
-                    }
-                },
-                "output": {
-                    "to": {
-                        "kind": "ImageStreamTag",
-                        "name": "${PROXY_NAME}-img:latest"
-                    }
-                }
             }
         },
         {
@@ -1281,9 +1207,28 @@
                         }
                     },
                     "spec": {
+                        "initContainers": [
+                            {
+                                "name": "setup-scripts",
+                                "image": "${JUPYTERHUB_NAME}-hub-img:latest",
+                                "command": [
+                                    "/opt/app-root/src/setup-oauth2-proxy.sh"
+                                ],
+                                "volumeMounts": [
+                                    {
+                                        "name": "scripts",
+                                        "mountPath": "/opt/oauth2-proxy",
+                                        "subPath": "oauth2-proxy"
+                                    }
+                                ]
+                            }
+                        ],
                         "containers": [
                             {
                                 "name": "proxy",
+                                "command" : [
+                                    "/opt/oauth2-proxy/start-oauth2-proxy.sh"
+                                ],
                                 "env": [
                                     {
                                         "name": "JUPYTERHUB_SERVICE_NAME",
@@ -1311,7 +1256,19 @@
                                         "containerPort": 8080,
                                         "protocol": "TCP"
                                     }
+                                ],
+                                "volumeMounts": [
+                                    {
+                                        "name": "scripts",
+                                        "mountPath": "/opt/oauth2-proxy"
+                                    }
                                 ]
+                            }
+                        ],
+                        "volumes": [
+                            {
+                                "name": "scripts",
+                                "emptyDir": {}
                             }
                         ]
                     }
